@@ -1,0 +1,146 @@
+/*
+Cleaning Data with PosGresSQL Queries
+*/
+
+-- Let's see everthing
+Select * From nashville_housing_data;
+
+--------------------------------------------------------------------------------------------------------------------------
+
+/* Populate Property Address data */
+
+Select * 
+From nashville_housing_data
+Order By parcelid;
+-- Joins two tables on the condition that their "parcelid" 
+--columns match. 
+
+Select * 
+From nashville_housing_data a
+Join nashville_housing_data b 
+	on a.parcelid = b.parcelid
+	And a.uniqueid <> b.uniqueid
+Where a.propertyaddress Is null;
+
+
+-- Joins the list where on the condition that their
+--"parcelid" columns match and where "propertyaddress" 
+--is null so you can fill the the null values.
+Select a.parcelid, a.propertyaddress, b.parcelid, b.propertyaddress 
+From nashville_housing_data a
+Join nashville_housing_data b 
+	on a.parcelid = b.parcelid
+	And a.uniqueid <> b.uniqueid
+Where a.propertyaddress Is null;
+
+
+-- Updates all rows where propertyaddress has a null value,
+-- because it has taken the value from the corresponding 
+-- parcelid code.
+UPDATE nashville_housing_data AS a
+SET propertyaddress = b.propertyaddress
+FROM nashville_housing_data AS b
+WHERE a.parcelid = b.parcelid
+  AND a.uniqueid <> b.uniqueid
+  AND a.propertyaddress IS NULL;
+  
+  
+-- When reading this syntax it's best to understand the 
+-- Where clause first, then undertand what the Set clause
+-- is stating. This doesn't use a join statement 
+-- but the Where clause implies it.
+--------------------------------------------------------------------------------------------------------------------------
+
+/* Change true and false to Yes and No in "Sold as Vacant" field */
+
+--See that column and rows + how many of them are true/false
+Select Distinct(Soldasvacant), Count(Soldasvacant) 
+From nashville_housing_data
+Group By Soldasvacant
+Order By Soldasvacant;
+
+-- Create the change through a Case statement
+SELECT soldasvacant, 
+  CASE 
+    WHEN soldasvacant = 'true' THEN 'Yes'
+    WHEN soldasvacant = 'false' THEN 'No'
+    ELSE soldasvacant
+  END AS soldasvacant_str
+FROM nashville_housing_data;
+
+--Update that column's rows
+Update nashville_housing_data
+Set soldasvacant = 
+CASE 
+    WHEN soldasvacant = 'true' THEN 'Yes'
+    WHEN soldasvacant = 'false' THEN 'No'
+    ELSE soldasvacant
+  END;
+  
+-- Recheck that column 
+Select soldasvacant
+From nashville_housing_data;
+
+-----------------------------------------------------------------------------------------------------------------------------------------------------------
+
+/* Remove Duplicates */
+
+-- We have to identify pure duplicates and then delete them.
+-- Temporary table holding the pure duplicates.
+
+With Duplicates As (
+  Select parcelid, propertyaddress, saledate, legalreference, COUNT(*) As cnt
+  From nashville_housing_data
+  Group By parcelid, propertyaddress, saledate, legalreference
+  Having COUNT(*) > 1
+)
+
+-- Joining the temp table with the actual table.
+Select n.*
+From nashville_housing_data n
+Join Duplicates d
+On n.parcelid = d.parcelid
+And n.propertyaddress = d.propertyaddress
+And n.saledate = d.saledate
+And n.legalreference = d.legalreference
+Order By n.propertyaddress;
+
+--This creates a temporary table called "Duplicates" 
+--that contains information about the rows that have 
+--duplicates. Then uses the "DELETE" statement to delete 
+--the duplicates from the nashville_housing_data table 
+WITH Duplicates AS (
+  SELECT parcelid, propertyaddress, saledate, legalreference, COUNT(*) AS cnt
+  FROM nashville_housing_data
+  GROUP BY parcelid, propertyaddress, saledate, legalreference
+  HAVING COUNT(*) > 1
+)
+DELETE FROM nashville_housing_data
+WHERE (parcelid, propertyaddress, saledate, legalreference) IN (
+  SELECT parcelid, propertyaddress, saledate, legalreference
+  FROM Duplicates
+);
+
+-- Re-check for Duplicates 
+With Duplicates As (
+  Select parcelid, propertyaddress, saledate, legalreference, COUNT(*) As cnt
+  From nashville_housing_data
+  Group By parcelid, propertyaddress, saledate, legalreference
+  Having COUNT(*) > 1
+)
+
+-- Joining the temp table with the actual table.
+Select n.*
+From nashville_housing_data n
+Join Duplicates d
+On n.parcelid = d.parcelid
+And n.propertyaddress = d.propertyaddress
+And n.saledate = d.saledate
+And n.legalreference = d.legalreference
+Order By n.propertyaddress;
+
+
+Select * From nashville_housing_data
+
+
+
